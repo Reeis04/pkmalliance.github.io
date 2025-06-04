@@ -1,1 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pokédex - Kanto & Johto</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(to bottom, #fdf6e3, #f2eecb);
+    }
 
+    h1, .type-label {
+      font-family: 'Press Start 2P', cursive;
+    }
+
+    .tooltip {
+      position: absolute;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      pointer-events: none;
+      visibility: hidden;
+      z-index: 50;
+    }
+
+    .type-normal { background-color: #A8A878; }
+    .type-fire { background-color: #F08030; }
+    .type-water { background-color: #6890F0; }
+    .type-electric { background-color: #F8D030; }
+    .type-grass { background-color: #78C850; }
+    .type-ice { background-color: #98D8D8; }
+    .type-fighting { background-color: #C03028; }
+    .type-poison { background-color: #A040A0; }
+    .type-ground { background-color: #E0C068; }
+    .type-flying { background-color: #A890F0; }
+    .type-psychic { background-color: #F85888; }
+    .type-bug { background-color: #A8B820; }
+    .type-rock { background-color: #B8A038; }
+    .type-ghost { background-color: #705898; }
+    .type-dragon { background-color: #7038F8; }
+    .type-dark { background-color: #705848; }
+    .type-steel { background-color: #B8B8D0; }
+    .type-fairy { background-color: #EE99AC; }
+  </style>
+</head>
+
+<body class="p-4 ml-56">
+<div class="fixed top-0 left-0 h-full w-52 bg-blue-900 text-white flex flex-col p-4 z-50 shadow-xl">
+  <h2 class="text-lg mb-6 font-bold text-yellow-300 text-center" style="font-family: 'Press Start 2P', cursive;">MENU</h2>
+  <a href="extra.html" class="mb-3 px-2 py-2 bg-yellow-400 hover:bg-yellow-300 text-blue-900 rounded text-xs font-bold text-center transition">Itens de Boost</a>
+  <div class="mb-3 px-2 py-2 bg-gray-500 text-white rounded text-xs text-center opacity-50 cursor-not-allowed">Em breve</div>
+  <div class="px-2 py-2 bg-gray-500 text-white rounded text-xs text-center opacity-50 cursor-not-allowed">Em breve</div>
+</div>
+
+<div class="max-w-screen-xl mx-auto relative">
+  <h1 class="text-4xl text-center mb-8 text-red-600">Pokédex - Kanto & Johto</h1>
+
+  <h2 class="text-2xl font-bold text-gray-700 mb-4 type-label">Formas Normais</h2>
+  <div id="pokedex" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-12"></div>
+
+  <h2 class="text-2xl font-bold text-yellow-600 mb-4 type-label">Formas Shiny</h2>
+  <div id="pokedex-shiny" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6"></div>
+
+  <div id="tooltip" class="tooltip"></div>
+</div>
+
+<div id="detalhes" class="hidden fixed top-0 right-0 w-full md:w-1/2 h-full bg-white shadow-xl overflow-y-auto z-40 p-4">
+  <button onclick="fecharDetalhes()" class="text-red-600 font-bold text-lg mb-4">Fechar ✖</button>
+  <div id="conteudo-detalhes"></div>
+</div>
+
+<script>
+  async function carregarPokedex() {
+    const [pokemonResponse, extrasResponse, shinyExtrasResponse, localizacaoResponse] = await Promise.all([
+      fetch('https://raw.githubusercontent.com/fanzeyi/pokemon.json/master/pokedex.json'),
+      fetch('extras.json'),
+      fetch('extras-shiny.json'),
+      fetch('localizacao.json')
+    ]);
+    const pokemons = await pokemonResponse.json();
+    const extras = await extrasResponse.json();
+    const shinyExtras = await shinyExtrasResponse.json();
+    const localizacoes = await localizacaoResponse.json();
+    const container = document.getElementById('pokedex');
+    const containerShiny = document.getElementById('pokedex-shiny');
+    const tooltip = document.getElementById('tooltip');
+
+    // Mapeamento para corrigir nomes incorretos no localizacao.json
+    const nomeCorrecoes = {
+      'Charmelion': 'Charmeleon'
+    };
+
+    pokemons.forEach(pokemon => {
+      if (pokemon.id > 251) return;
+      const normalData = extras[pokemon.id] || { drop: "Nenhum drop", link: "-", location: "-" };
+      const shinyData = shinyExtras[pokemon.id] || { drop: "Nenhum drop", link: "-", location: "-" };
+
+      const card = criarCard(pokemon, normalData, false, localizacoes);
+      container.appendChild(card);
+
+      const cardShiny = criarCard(pokemon, shinyData, true, localizacoes);
+      containerShiny.appendChild(cardShiny);
+    });
+
+    function criarCard(pokemon, data, isShiny, localizacoes) {
+      const card = document.createElement('div');
+      card.className = 'relative block bg-white border-4 border-blue-900 rounded-2xl p-4 text-center shadow-lg hover:scale-105 transition-transform duration-300 cursor-pointer';
+
+      const img = document.createElement('img');
+      const paddedId = pokemon.id.toString().padStart(3, '0');
+      img.src = isShiny
+        ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${pokemon.id}.png`
+        : `https://raw.githubusercontent.com/fanzeyi/pokemon.json/master/images/${paddedId}.png`;
+      img.alt = pokemon.name.english + (isShiny ? ' (Shiny)' : '');
+      img.className = 'mx-auto w-20 h-20';
+
+      const name = document.createElement('h2');
+      name.className = 'text-sm mt-2 font-bold';
+      name.textContent = pokemon.name.english + (isShiny ? ' ✨' : '');
+
+      const types = document.createElement('div');
+      types.className = 'flex justify-center gap-1 mt-2';
+
+      pokemon.type.forEach(type => {
+        const badge = document.createElement('span');
+        badge.className = `text-white text-xs px-2 py-1 rounded type-${type.toLowerCase()}`;
+        badge.textContent = type;
+        types.appendChild(badge);
+      });
+
+      card.addEventListener('mousemove', e => {
+        tooltip.style.left = e.pageX + 10 + 'px';
+        tooltip.style.top = e.pageY + 10 + 'px';
+        tooltip.textContent = `Drop: ${data.drop}`;
+        tooltip.style.visibility = 'visible';
+      });
+
+      card.addEventListener('mouseleave', () => {
+        tooltip.style.visibility = 'hidden';
+      });
+
+      card.addEventListener('click', () => abrirModalComDetalhes(pokemon, data, isShiny, localizacoes));
+
+      card.appendChild(img);
+      card.appendChild(name);
+      card.appendChild(types);
+      return card;
+    }
+  }
+
+  function abrirModalComDetalhes(pokemon, data, isShiny, localizacoes) {
+    const detalhes = document.getElementById('detalhes');
+    const conteudo = document.getElementById('conteudo-detalhes');
+    const paddedId = pokemon.id.toString().padStart(3, '0');
+
+    // Corrigir nomes para buscar localização
+    const nomeCorreto = pokemon.name.english === 'Charmeleon' ? 'Charmelion' : pokemon.name.english;
+    const localizacao = localizacoes[nomeCorreto] || '---';
+
+    // Cria o conteúdo dinâmico para link ou localização de extras
+    let localizacaoExtraHTML = '';
+    if (data.link && data.link !== '-' && data.link.trim() !== '') {
+      localizacaoExtraHTML = `<a href="${data.link}" target="_blank" class="text-blue-600 underline">Ver mais</a>`;
+    } else if (data.location && data.location !== '-' && data.location.trim() !== '') {
+      localizacaoExtraHTML = `<p><strong>Localização (Extras):</strong> ${data.location}</p>`;
+    }
+
+    // Exibe localização do localizacao.json (URL como link ou texto simples)
+    let localizacaoPokemon = '';
+    if (localizacao && localizacao !== '-' && localizacao.trim() !== '') {
+      if (localizacao.startsWith('https://prnt.sc/')) {
+        localizacaoPokemon = `<a href="${localizacao}" target="_blank" class="text-blue-600 underline">Ver localização</a>`;
+      } else {
+        localizacaoPokemon = `<p><strong>Localização:</strong> ${localizacao}</p>`;
+      }
+    } else {
+      localizacaoPokemon = `<p><strong>Localização:</strong> ---</p>`;
+    }
+
+    conteudo.innerHTML = `
+      <h2 class="text-xl font-bold">${pokemon.name.english} ${isShiny ? '✨' : ''}</h2>
+      <img src="${isShiny
+        ? `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${pokemon.id}.png`
+        : `https://raw.githubusercontent.com/fanzeyi/pokemon.json/master/images/${paddedId}.png`
+      }" class="my-4 w-32 h-32" />
+      <p><strong>Tipos:</strong> ${pokemon.type.join(', ')}</p>
+      <p><strong>Drop:</strong> ${data.drop}</p>
+      ${localizacaoExtraHTML}
+      ${localizacaoPokemon}
+    `;
+
+    detalhes.classList.remove('hidden');
+  }
+
+  function fecharDetalhes() {
+    document.getElementById('detalhes').classList.add('hidden');
+  }
+
+  carregarPokedex();
+</script>
+</body>
+</html>
